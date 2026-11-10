@@ -88,7 +88,9 @@ export const make = Effect.gen(function* () {
 
       const projects = yield* projectStore.listShells().pipe(Effect.orElseSucceed(() => []));
       for (const project of projects) {
-        if (within(yield* resolveRoot(project.workspaceRoot))) return true;
+        for (const root of [project.workspaceRoot, ...(project.additionalDirectories ?? [])]) {
+          if (within(yield* resolveRoot(root))) return true;
+        }
       }
 
       const threads = yield* sql<{ readonly worktreePath: string; readonly projectId: string }>`

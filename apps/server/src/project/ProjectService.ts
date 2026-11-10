@@ -188,6 +188,7 @@ export const make = Effect.gen(function* () {
     defaultModelSelection: row.defaultModelSelection,
     defaultThreadEnvMode: row.defaultThreadEnvMode,
     autoPull: row.autoPull,
+    additionalDirectories: row.additionalDirectories,
     projectIcon: row.projectIcon,
     scripts: row.scripts,
     pinnedAt: row.pinnedAt,
@@ -385,6 +386,16 @@ export const make = Effect.gen(function* () {
               projectId: input.projectId,
               workspaceRoot: input.workspaceRoot,
             });
+      const additionalDirectories =
+        input.additionalDirectories === undefined
+          ? undefined
+          : [
+              ...new Set(
+                yield* Effect.forEach(input.additionalDirectories, (directory) =>
+                  normalizeWorkspaceRoot({ projectId: input.projectId, workspaceRoot: directory }),
+                ),
+              ),
+            ].filter((directory) => directory !== workspaceRoot);
       yield* commit({
         type: "project.meta.update",
         commandId: input.commandId,
@@ -395,6 +406,7 @@ export const make = Effect.gen(function* () {
           ? {}
           : { defaultModelSelection: input.defaultModelSelection }),
         ...(input.autoPull === undefined ? {} : { autoPull: input.autoPull }),
+        ...(additionalDirectories === undefined ? {} : { additionalDirectories }),
         ...(input.projectIcon === undefined ? {} : { projectIcon: input.projectIcon }),
         ...(input.faviconPath === undefined ? {} : { faviconPath: input.faviconPath }),
         ...(input.defaultThreadEnvMode === undefined

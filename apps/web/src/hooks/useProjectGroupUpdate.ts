@@ -22,6 +22,7 @@ export type ProjectGroupUpdate = Partial<{
   projectIcon: ProjectIconOverride | null;
   pinned: boolean;
   archived: boolean;
+  additionalDirectories: ReadonlyArray<string>;
 }>;
 
 type ProjectGroupMember = Pick<

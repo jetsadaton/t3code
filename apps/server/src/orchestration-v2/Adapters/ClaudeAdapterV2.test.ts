@@ -296,12 +296,13 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
     assert.isUndefined(options.extraArgs?.["dangerously-skip-permissions"]);
   });
 
-  it("passes every --add-dir launch directory to Claude", () => {
+  it("passes workspace folders and every --add-dir launch directory to Claude", () => {
     const options = ClaudeAdapterV2.makeClaudeQueryOptions({
       modelSelection: CLAUDE_TEST_MODEL_SELECTION,
       nativeThreadId: "native-add-dir",
       resume: false,
       cwd: "/workspace",
+      workspaceDirectories: ["/other-repo"],
       attachmentsDir: "/attachments",
       settings: {
         ...AUTO_COMPACT_CLAUDE_SETTINGS,
@@ -310,6 +311,7 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
     });
     assert.deepEqual(options.additionalDirectories, [
       "/workspace",
+      "/other-repo",
       "/attachments",
       "../apps",
       "../lib",

@@ -20,6 +20,7 @@ const row = (overrides: Partial<ProjectRow> = {}): ProjectRow => ({
   defaultModelSelection: null,
   defaultThreadEnvMode: null,
   autoPull: false,
+  additionalDirectories: [],
   faviconPath: null,
   projectIcon: null,
   scripts: [],

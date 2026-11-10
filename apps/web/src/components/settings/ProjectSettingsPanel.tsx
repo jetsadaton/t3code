@@ -49,6 +49,7 @@ import {
   ProjectFaviconPickerDialog,
 } from "./ProjectFaviconPickerDialog";
 import { ProjectActionsSettings } from "./ProjectActionsSettings";
+import { ProjectWorkspaceFoldersSettings } from "./ProjectWorkspaceFoldersSettings";
 import { ProjectDefaultsSettings } from "./ProjectDefaultsSettings";
 import {
   defaultProjectIcon,
@@ -655,6 +656,10 @@ function ProjectDetail({
         </SettingsSection>
         <ProjectDefaultsSettings category="project" />
         <ProjectActionsSettings />
+        <ProjectWorkspaceFoldersSettings
+          members={group.memberProjects}
+          editable={(member) => editableIds.has(member.environmentId)}
+        />
         {checkoutChoices}
         <SettingsSection title="Danger">
           <SettingsRow
