@@ -61,6 +61,7 @@ const isClosedViewEntry = (entry: unknown): entry is ClosedViewEntry => {
   if (!surface || typeof surface.id !== "string") return false;
   switch (surface.kind) {
     case "diff":
+    case "git-graph":
     case "files":
     case "pull-requests":
       return surface.id === surface.kind;
@@ -69,6 +70,7 @@ const isClosedViewEntry = (entry: unknown): entry is ClosedViewEntry => {
     case "file":
       return (
         typeof surface.relativePath === "string" &&
+        (surface.root === undefined || typeof surface.root === "string") &&
         (surface.revealLine === null || Number.isSafeInteger(surface.revealLine)) &&
         Number.isSafeInteger(surface.revealRequestId) &&
         (surface.attachment === undefined || isAttachment(surface.attachment))

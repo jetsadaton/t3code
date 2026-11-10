@@ -42,6 +42,7 @@ import {
   ChevronRight,
   FileDiff,
   Files,
+  GitGraph,
   Globe2,
   MessagesSquare,
   Plus,
@@ -137,6 +138,8 @@ export interface RightPanelTabsProps {
   onAddBrowserInProfile: (profileId: string) => void;
   onAddTerminal: () => void;
   onAddDiff: () => void;
+  /** Absent where the commit graph is not offered. */
+  onAddGitGraph?: (() => void) | undefined;
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
@@ -318,6 +321,8 @@ function RightPanelEmptyState(props: {
   browserProfiles: ReadonlyArray<{ readonly id: string; readonly name: string }>;
   onAddTerminal: () => void;
   onAddDiff: () => void;
+  /** Absent where the commit graph is not offered. */
+  onAddGitGraph?: (() => void) | undefined;
   onAddFiles: () => void;
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
@@ -369,6 +374,18 @@ function RightPanelEmptyState(props: {
       disabledReason: SURFACE_UNAVAILABLE_HINTS.diff,
       onClick: props.onAddDiff,
     },
+    ...(props.onAddGitGraph
+      ? [
+          {
+            label: "Git graph",
+            icon: GitGraph,
+            shortcut: "G",
+            available: props.diffAvailable,
+            disabledReason: SURFACE_UNAVAILABLE_HINTS.diff,
+            onClick: props.onAddGitGraph,
+          },
+        ]
+      : []),
     {
       label: "Pull request",
       icon: PullRequestGlyph.pullRequest,
@@ -575,6 +592,8 @@ function surfaceTitle(
   switch (surface.kind) {
     case "diff":
       return "Diff";
+    case "git-graph":
+      return "Git graph";
     case "files":
       return "Files";
     case "file":
@@ -659,6 +678,8 @@ function SurfaceIcon({
       return <PreviewFavicon capturedUrl={previewCapturedUrl} url={previewUrl} />;
     case "diff":
       return <FileDiff className="size-3 shrink-0" />;
+    case "git-graph":
+      return <GitGraph className="size-3 shrink-0" />;
     case "files":
       return <Files className="size-3 shrink-0" />;
     case "file":
@@ -1123,6 +1144,18 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       disabledReason: SURFACE_DISABLED_REASONS.diff,
       onClick: props.onAddDiff,
     },
+    ...(props.onAddGitGraph
+      ? [
+          {
+            label: "Git graph",
+            icon: GitGraph,
+            shortcut: "G",
+            available: props.diffAvailable,
+            disabledReason: SURFACE_DISABLED_REASONS.diff,
+            onClick: props.onAddGitGraph,
+          },
+        ]
+      : []),
     {
       label: "Pull request",
       icon: PullRequestGlyph.pullRequest,
@@ -1529,6 +1562,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             browserProfiles={browserProfiles}
             onAddTerminal={props.onAddTerminal}
             onAddDiff={props.onAddDiff}
+            onAddGitGraph={props.onAddGitGraph}
             onAddFiles={props.onAddFiles}
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}

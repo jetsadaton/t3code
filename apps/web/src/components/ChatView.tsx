@@ -373,6 +373,7 @@ import {
 } from "./ChatView.logic";
 
 const EMPTY_PROVIDERS: ServerProvider[] = [];
+const EMPTY_DIRECTORIES: ReadonlyArray<string> = [];
 const EMPTY_PROVIDER_MODELS: ServerProvider["models"] = [];
 const EMPTY_USAGE_LIMIT_SOURCES: UsageLimitSourceSnapshots = [];
 import type { CodexArtifactTemplate } from "@t3tools/shared/codexArtifactTemplates";
@@ -2327,6 +2328,7 @@ export default function ChatView(props: ChatViewProps) {
     activateRightPanelSurfaceStable,
     addDeviceSurfaceStable,
     addDiffSurfaceStable,
+    addGitGraphSurfaceStable,
     addFilesSurfaceStable,
     addPullRequestSurfaceStable,
     addPullRequestsSurfaceStable,
@@ -3210,6 +3212,7 @@ export default function ChatView(props: ChatViewProps) {
         projectId: activeProject?.id,
         projectName: activeProject?.title ?? null,
         workspaceRoot: activeWorkspaceRoot,
+        additionalDirectories: activeProject?.additionalDirectories ?? EMPTY_DIRECTORIES,
         availableEditors,
         pendingSurfaceIds: pendingFileSurfaceIds,
         onOpenFile: openFileSurfaceStable,
@@ -3960,6 +3963,7 @@ export default function ChatView(props: ChatViewProps) {
           onAddBrowserInProfile={createBrowserSurfaceStable}
           onAddTerminal={addTerminalSurfaceStable}
           onAddDiff={addDiffSurfaceStable}
+          onAddGitGraph={addGitGraphSurfaceStable}
           onAddFiles={addFilesSurfaceStable}
           onAddPullRequest={addPullRequestSurfaceStable}
           onAddPullRequests={addPullRequestsSurfaceStable}

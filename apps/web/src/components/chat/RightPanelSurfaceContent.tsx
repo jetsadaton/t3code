@@ -24,11 +24,15 @@ import { PullRequestDetailPanel } from "../pullRequest/PullRequestDetailPanel";
 import { PullRequestDetailGhost } from "../pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "../pullRequest/PullRequestsUnavailableState";
 import { ThreadPullRequestsPanel } from "../pullRequest/ThreadPullRequestsPanel";
+import { WorkspaceRootPicker } from "../files/WorkspaceRootPicker";
 
 const PreviewPanel = lazy(() =>
   import("../preview/PreviewPanel").then((module) => ({ default: module.PreviewPanel })),
 );
 const DiffPanel = lazy(() => import("../DiffPanel"));
+const GitGraphPanel = lazy(() =>
+  import("../gitGraph/GitGraphPanel").then((module) => ({ default: module.GitGraphPanel })),
+);
 const DevicePanel = lazy(() =>
   import("../device/DevicePanel").then((module) => ({ default: module.DevicePanel })),
 );
@@ -53,6 +57,8 @@ interface RightPanelFileProps {
   readonly projectId?: ProjectId | undefined;
   readonly projectName: string | null;
   readonly workspaceRoot: string | undefined;
+  /** The project's extra workspace folders. */
+  readonly additionalDirectories: ReadonlyArray<string>;
   readonly availableEditors: ReadonlyArray<EditorId>;
   readonly pendingSurfaceIds: ReadonlySet<string>;
   readonly onOpenFile: (relativePath: string) => void;
@@ -114,6 +120,17 @@ export function RightPanelSurfaceContent(props: {
             composerDraftTarget={props.composerDraftTarget}
             workspaceMutationId={props.workspaceMutationId}
             visible={visible}
+          />
+        </Suspense>
+      );
+    case "git-graph":
+      if (!props.files.workspaceRoot) return null;
+      return (
+        <Suspense fallback={null}>
+          <GitGraphPanel
+            environmentId={props.environmentId}
+            roots={[props.files.workspaceRoot, ...props.files.additionalDirectories]}
+            workspaceMutationId={props.workspaceMutationId}
           />
         </Suspense>
       );
@@ -201,14 +218,32 @@ export function RightPanelSurfaceContent(props: {
       const files = props.files;
       const attachment = surface.kind === "file" ? surface.attachment : undefined;
       if (!attachment && (files.projectName === null || !files.workspaceRoot)) return null;
+      const root = surface.root;
+      const cwd = root ?? files.workspaceRoot ?? "";
       return (
         <Suspense fallback={null}>
+          {surface.kind === "files" && files.additionalDirectories.length > 0 ? (
+            <WorkspaceRootPicker
+              roots={[files.workspaceRoot ?? "", ...files.additionalDirectories]}
+              value={cwd}
+              onChange={(next) =>
+                useRightPanelStore
+                  .getState()
+                  .navigateFolder(
+                    threadRef,
+                    surface.id,
+                    "",
+                    "",
+                    false,
+                    next === files.workspaceRoot ? undefined : next,
+                  )
+              }
+            />
+          ) : null}
           <FilePreviewPanel
-            key={`${props.environmentId}:${
-              attachment ? `attachment:${attachment.id}` : files.workspaceRoot
-            }`}
+            key={`${props.environmentId}:${attachment ? `attachment:${attachment.id}` : cwd}`}
             environmentId={props.environmentId}
-            cwd={files.workspaceRoot ?? ""}
+            cwd={cwd}
             projectName={files.projectName ?? ""}
             projectId={files.projectId}
             threadRef={threadRef}
@@ -220,11 +255,16 @@ export function RightPanelSurfaceContent(props: {
             {...(attachment ? { attachment } : {})}
             revealLine={surface.kind === "file" ? (surface.revealLine ?? null) : null}
             revealRequestId={surface.kind === "file" ? surface.revealRequestId : 0}
-            onOpenFile={files.onOpenFile}
+            onOpenFile={
+              root === undefined
+                ? files.onOpenFile
+                : (relativePath) =>
+                    useRightPanelStore.getState().openFile(threadRef, relativePath, undefined, root)
+            }
             onNavigateFolder={(relativePath, folderTrail, keepSource) =>
               useRightPanelStore
                 .getState()
-                .navigateFolder(threadRef, surface.id, relativePath, folderTrail, keepSource)
+                .navigateFolder(threadRef, surface.id, relativePath, folderTrail, keepSource, root)
             }
             folderTrail={surface.folderTrail}
             onPendingChange={files.onPendingChange}

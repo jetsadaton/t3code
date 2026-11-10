@@ -14,6 +14,7 @@ import type { ChatFileAttachment } from "./types";
 
 const RIGHT_PANEL_KINDS = [
   "diff",
+  "git-graph",
   "files",
   "file",
   "preview",
@@ -47,9 +48,12 @@ export type RightPanelSurface =
       splitDirection?: "horizontal" | "vertical";
     }
   | { id: "diff"; kind: "diff" }
+  | { id: "git-graph"; kind: "git-graph" }
   | {
       id: "files";
       kind: "files";
+      /** An extra workspace folder; absent means the project folder. */
+      root?: string;
       /** Set when breadcrumbs moved a folder browser up to the workspace root. */
       folderTrail?: string;
     }
@@ -57,6 +61,8 @@ export type RightPanelSurface =
       id: `file:${string}` | `attachment:${string}`;
       kind: "file";
       relativePath: string;
+      /** An extra workspace folder; absent means the project folder. */
+      root?: string;
       revealLine: number | null;
       revealRequestId: number;
       attachment?: ChatFileAttachment;
@@ -129,7 +135,7 @@ interface RightPanelStoreState {
   openDevice: (ref: ScopedThreadRef, target: DeviceTabTarget, automatic?: boolean) => void;
   renameDevice: (ref: ScopedThreadRef, surfaceId: string, title: string) => void;
   openBrowser: (ref: ScopedThreadRef, tabId: string | null) => void;
-  openFile: (ref: ScopedThreadRef, relativePath: string, line?: number) => void;
+  openFile: (ref: ScopedThreadRef, relativePath: string, line?: number, root?: string) => void;
   /** Moves in place; "" opens the root explorer. folderTrail keeps the return path; keepSource opens beside the source. */
   navigateFolder: (
     ref: ScopedThreadRef,
@@ -137,6 +143,7 @@ interface RightPanelStoreState {
     relativePath: string,
     folderTrail: string,
     keepSource?: boolean,
+    root?: string,
   ) => void;
   openAttachment: (ref: ScopedThreadRef, attachment: ChatFileAttachment) => void;
   openPullRequest: (
@@ -213,6 +220,8 @@ const singletonSurface = (
   switch (kind) {
     case "diff":
       return { id: "diff", kind };
+    case "git-graph":
+      return { id: "git-graph", kind };
     case "files":
       return { id: "files", kind };
     case "pull-requests":
@@ -231,12 +240,14 @@ const fileSurface = (
   relativePath: string,
   revealLine: number | null,
   revealRequestId: number,
+  root?: string,
 ): RightPanelSurface => ({
-  id: `file:${relativePath}`,
+  id: root === undefined ? `file:${relativePath}` : `file:${root}::${relativePath}`,
   kind: "file",
   relativePath,
   revealLine,
   revealRequestId,
+  ...(root === undefined ? {} : { root }),
 });
 
 const attachmentSurface = (attachment: ChatFileAttachment): RightPanelSurface => ({
@@ -781,11 +792,14 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             ),
           }));
         }),
-      openFile: (ref, requestedPath, line) =>
+      openFile: (ref, requestedPath, line, root) =>
         set((state) =>
           userAction(state, scopedThreadKey(ref), (current) => {
             if (requestedPath === ".") {
-              return upsertSurface(current, singletonSurface("files"));
+              return upsertSurface(current, {
+                ...singletonSurface("files"),
+                ...(root === undefined ? {} : { root }),
+              });
             }
             // Workspace entry paths use '/', including on Windows.
             const relativePath = /^[A-Za-z]:\/+$/.test(requestedPath)
@@ -794,7 +808,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             const withoutStandaloneExplorer = current.surfaces.filter(
               (surface) => surface.kind !== "files",
             );
-            const surfaceId = `file:${relativePath}` as const;
+            const surfaceId = fileSurface(relativePath, null, 0, root).id;
             const existing = withoutStandaloneExplorer.find(
               (surface): surface is Extract<RightPanelSurface, { kind: "file" }> =>
                 surface.id === surfaceId && surface.kind === "file",
@@ -803,6 +817,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
               relativePath,
               normalizeRevealLine(line),
               (existing?.revealRequestId ?? 0) + 1,
+              root,
             );
             return {
               ...current,
@@ -816,7 +831,7 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             };
           }),
         ),
-      navigateFolder: (ref, surfaceId, relativePath, folderTrail, keepSource = false) =>
+      navigateFolder: (ref, surfaceId, relativePath, folderTrail, keepSource = false, root) =>
         set((state) =>
           userAction(state, scopedThreadKey(ref), (current) => {
             const index = current.surfaces.findIndex((surface) => surface.id === surfaceId);
@@ -824,8 +839,12 @@ export const useRightPanelStore = create<RightPanelStoreState>()(
             const trail = folderTrail === relativePath ? {} : { folderTrail };
             const target: RightPanelSurface =
               relativePath === ""
-                ? { ...singletonSurface("files"), ...trail }
-                : { ...fileSurface(relativePath, null, 1), ...trail };
+                ? {
+                    ...singletonSurface("files"),
+                    ...trail,
+                    ...(root === undefined ? {} : { root }),
+                  }
+                : { ...fileSurface(relativePath, null, 1, root), ...trail };
             const source = current.surfaces[index]!;
             const existing = current.surfaces.some(
               (surface, i) => i !== index && surface.id === target.id,
