@@ -23,6 +23,7 @@ import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadServersPanel } from "./ThreadServersPanel";
+import { ThreadPackageScriptsControl, type RunPackageScript } from "./ThreadPackageScriptsControl";
 import { ThreadWorkspaceFoldersControl } from "./ThreadWorkspaceFoldersControl";
 import {
   ThreadDetailsContext,
@@ -77,7 +78,7 @@ interface ThreadDetailsPanelProps extends Pick<
   onCheckoutPullRequestRequest?: (reference: string) => void;
   onComposerFocusRequest: () => void;
   onOpenChanges?: () => void;
-  onRunProjectScript: (script: ProjectScript) => void;
+  onRunProjectScript: RunPackageScript;
   onAddProjectScript: (input: NewProjectScriptInput) => Promise<ProjectScriptActionResult>;
   onUpdateProjectScript: (
     scriptId: string,
@@ -207,6 +208,15 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         onAddScript={props.onAddProjectScript}
                         onUpdateScript={props.onUpdateProjectScript}
                         onDeleteScript={props.onDeleteProjectScript}
+                      />
+                    ) : null}
+
+                    {show.scripts && props.gitCwd ? (
+                      <ThreadPackageScriptsControl
+                        environmentId={props.environmentId}
+                        projectId={props.projectId}
+                        rootCwd={props.gitCwd}
+                        onRun={props.onRunProjectScript}
                       />
                     ) : null}
 
