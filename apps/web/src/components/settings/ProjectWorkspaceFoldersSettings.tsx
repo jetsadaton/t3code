@@ -40,22 +40,42 @@ function WorkspaceFoldersRow(props: {
   editable: boolean;
   showEnvironment: boolean;
 }) {
-  const { member } = props;
+  return (
+    <SettingsRow
+      title={props.showEnvironment ? (props.member.environmentLabel ?? "Environment") : "Folders"}
+      description={props.member.workspaceRoot}
+    >
+      <div className="pb-2 pt-1">
+        <WorkspaceFoldersEditor project={props.member} editable={props.editable} />
+      </div>
+    </SettingsRow>
+  );
+}
+
+/** Lists a checkout's extra workspace folders with remove buttons and an add field. */
+export function WorkspaceFoldersEditor(props: {
+  project: Pick<
+    SidebarProjectGroupMember,
+    "environmentId" | "id" | "environmentLabel" | "additionalDirectories"
+  >;
+  editable: boolean;
+}) {
+  const { project } = props;
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const { updateProjectGroup } = useProjectGroupUpdate();
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const folders = member.additionalDirectories ?? [];
+  const folders = project.additionalDirectories ?? [];
   // The native picker browses this machine, so it only fits the local environment.
   const canBrowse =
     typeof window !== "undefined" &&
     window.desktopBridge !== undefined &&
-    member.environmentId === primaryEnvironmentId;
+    project.environmentId === primaryEnvironmentId;
 
   const save = async (next: ReadonlyArray<string>, failureTitle: string) => {
     setSaving(true);
     const result = await updateProjectGroup(
-      [member],
+      [project],
       { additionalDirectories: [...next] },
       failureTitle,
     );
@@ -73,62 +93,57 @@ function WorkspaceFoldersRow(props: {
   };
 
   return (
-    <SettingsRow
-      title={props.showEnvironment ? (member.environmentLabel ?? "Environment") : "Folders"}
-      description={member.workspaceRoot}
-    >
-      <div className="space-y-1.5 pb-2 pt-1">
-        {folders.map((folder) => (
-          <div key={folder} className="flex min-w-0 items-center gap-2">
-            <span className="min-w-0 flex-1 break-all font-mono text-xs">{folder}</span>
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label={`Remove ${folder}`}
-              disabled={!props.editable || saving}
-              onClick={() =>
-                void save(
-                  folders.filter((entry) => entry !== folder),
-                  "Failed to remove workspace folder",
-                )
-              }
-            >
-              <XIcon />
-            </Button>
-          </div>
-        ))}
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void add(draft);
-          }}
-        >
-          <Input
-            size="sm"
-            className="min-w-0 flex-1"
-            placeholder="/absolute/path/to/another/repo"
-            aria-label="Folder path"
-            value={draft}
+    <div className="space-y-1.5">
+      {folders.map((folder) => (
+        <div key={folder} className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 flex-1 break-all font-mono text-xs">{folder}</span>
+          <Button
+            size="icon-xs"
+            variant="ghost"
+            aria-label={`Remove ${folder}`}
             disabled={!props.editable || saving}
-            onChange={(event) => setDraft(event.currentTarget.value)}
-          />
-          <Button size="sm" variant="outline" type="submit" disabled={!props.editable || saving}>
-            Add
+            onClick={() =>
+              void save(
+                folders.filter((entry) => entry !== folder),
+                "Failed to remove workspace folder",
+              )
+            }
+          >
+            <XIcon />
           </Button>
-          {canBrowse ? (
-            <Button
-              size="sm"
-              variant="outline"
-              type="button"
-              disabled={!props.editable || saving}
-              onClick={() => void browse()}
-            >
-              Browse…
-            </Button>
-          ) : null}
-        </form>
-      </div>
-    </SettingsRow>
+        </div>
+      ))}
+      <form
+        className="flex items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void add(draft);
+        }}
+      >
+        <Input
+          size="sm"
+          className="min-w-0 flex-1"
+          placeholder="/absolute/path/to/another/repo"
+          aria-label="Folder path"
+          value={draft}
+          disabled={!props.editable || saving}
+          onChange={(event) => setDraft(event.currentTarget.value)}
+        />
+        <Button size="sm" variant="outline" type="submit" disabled={!props.editable || saving}>
+          Add
+        </Button>
+        {canBrowse ? (
+          <Button
+            size="sm"
+            variant="outline"
+            type="button"
+            disabled={!props.editable || saving}
+            onClick={() => void browse()}
+          >
+            Browse…
+          </Button>
+        ) : null}
+      </form>
+    </div>
   );
 }

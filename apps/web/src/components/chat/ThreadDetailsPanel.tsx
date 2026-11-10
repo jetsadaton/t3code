@@ -23,6 +23,7 @@ import { ThreadDetailsSection } from "./ThreadDetailsSection";
 import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadServersPanel } from "./ThreadServersPanel";
+import { ThreadWorkspaceFoldersControl } from "./ThreadWorkspaceFoldersControl";
 import {
   ThreadDetailsContext,
   ThreadDetailsUsage,
@@ -206,6 +207,13 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                         onAddScript={props.onAddProjectScript}
                         onUpdateScript={props.onUpdateProjectScript}
                         onDeleteScript={props.onDeleteProjectScript}
+                      />
+                    ) : null}
+
+                    {props.isServerThread ? (
+                      <ThreadWorkspaceFoldersControl
+                        environmentId={props.environmentId}
+                        projectId={props.projectId}
                       />
                     ) : null}
                   </div>
