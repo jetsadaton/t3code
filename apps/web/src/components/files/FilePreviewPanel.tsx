@@ -152,6 +152,8 @@ interface FilePreviewPanelProps {
   onPendingChange: (relativePath: string, pending: boolean) => void;
   selectedFilePending: boolean;
   workspaceMutationId: string | null;
+  /** Where the file tree sits beside an open file. */
+  explorerSide?: "left" | "right";
 }
 
 const MermaidFilePreview = lazy(() =>
@@ -1017,6 +1019,7 @@ export default function FilePreviewPanel({
   onPendingChange,
   selectedFilePending,
   workspaceMutationId,
+  explorerSide = "right",
 }: FilePreviewPanelProps) {
   const relativePath =
     attachment === undefined ? resolveFilePreviewPath(requestedPath, cwd) : requestedPath;
@@ -1540,7 +1543,7 @@ export default function FilePreviewPanel({
           ) : null}
         </div>
         {showExplorer ? (
-          <FileExplorerPane resizable={Boolean(previewPath)}>
+          <FileExplorerPane resizable={Boolean(previewPath)} side={explorerSide}>
             <FileBrowserPanel
               key={`${environmentId}:${hostFolderPath ?? cwd}`}
               environmentId={environmentId}

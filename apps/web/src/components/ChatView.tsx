@@ -156,8 +156,10 @@ import {
   selectActiveRightPanelSurface,
   selectThreadPanelOpen,
   selectThreadRightPanelState,
+  type RightPanelSurface,
   useRightPanelStore,
 } from "../rightPanelStore";
+import { collapseFileSurfaces, isWorkspaceFileSurface } from "./files/fileTabGroup";
 import { isPreviewSupportedInRuntime, useThreadPreviewState } from "../previewStateStore";
 import { previewRuntimeTabId } from "../browser/previewRuntimeTabId";
 import {
@@ -2010,7 +2012,31 @@ export default function ChatView(props: ChatViewProps) {
     threadRef: activeThreadRef,
     terminalLabelsById: activeTerminalLabelsById,
   });
-  const closeRightPanelSurfaceStable = closeRightPanelSurface;
+  const { tabs: rightPanelTabSurfaces, openFiles: openWorkspaceFiles } = collapseFileSurfaces(
+    renderedRightPanelSurfaces,
+    renderedRightPanelSurface?.id ?? null,
+  );
+  // The folded "Files" tab closes the tree and every open file with it.
+  const closeRightPanelSurfaceStable = (surface: RightPanelSurface) => {
+    if (!isWorkspaceFileSurface(surface)) return closeRightPanelSurface(surface);
+    for (const member of renderedRightPanelSurfaces) {
+      if (isWorkspaceFileSurface(member)) closeRightPanelSurface(member);
+    }
+  };
+  // Closing the last open file falls back to the tree instead of losing the Files tab.
+  const closeOpenFile = (surface: RightPanelSurface) => {
+    closeRightPanelSurface(surface);
+    if (activeThreadRef && openWorkspaceFiles.length === 1) {
+      useRightPanelStore
+        .getState()
+        .openFile(
+          activeThreadRef,
+          ".",
+          undefined,
+          surface.kind === "file" ? surface.root : undefined,
+        );
+    }
+  };
   const persistThreadSettingsForNextTurn = async (input: {
     threadId: ThreadId;
     createdAt: string;
@@ -3213,6 +3239,9 @@ export default function ChatView(props: ChatViewProps) {
         projectName: activeProject?.title ?? null,
         workspaceRoot: activeWorkspaceRoot,
         additionalDirectories: activeProject?.additionalDirectories ?? EMPTY_DIRECTORIES,
+        openFiles: openWorkspaceFiles,
+        onActivateFile: activateRightPanelSurfaceStable,
+        onCloseFile: closeOpenFile,
         availableEditors,
         pendingSurfaceIds: pendingFileSurfaceIds,
         onOpenFile: openFileSurfaceStable,
@@ -3940,7 +3969,7 @@ export default function ChatView(props: ChatViewProps) {
               </div>
             ) : null
           }
-          surfaces={renderedRightPanelSurfaces}
+          surfaces={rightPanelTabSurfaces}
           environmentId={activeThreadRef.environmentId}
           activeSurfaceId={renderedRightPanelSurface?.id ?? null}
           pendingSurfaceIds={pendingFileSurfaceIds}

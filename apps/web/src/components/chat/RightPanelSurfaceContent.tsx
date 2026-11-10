@@ -25,6 +25,8 @@ import { PullRequestDetailGhost } from "../pullRequest/PullRequestGhosts";
 import { PullRequestsUnavailableState } from "../pullRequest/PullRequestsUnavailableState";
 import { ThreadPullRequestsPanel } from "../pullRequest/ThreadPullRequestsPanel";
 import { WorkspaceRootPicker } from "../files/WorkspaceRootPicker";
+import { OpenFileTabs } from "../files/OpenFileTabs";
+import type { WorkspaceFileSurface } from "../files/fileTabGroup";
 
 const PreviewPanel = lazy(() =>
   import("../preview/PreviewPanel").then((module) => ({ default: module.PreviewPanel })),
@@ -59,6 +61,10 @@ interface RightPanelFileProps {
   readonly workspaceRoot: string | undefined;
   /** The project's extra workspace folders. */
   readonly additionalDirectories: ReadonlyArray<string>;
+  /** Open workspace files, shown as a tab row inside the Files tab. */
+  readonly openFiles: ReadonlyArray<WorkspaceFileSurface>;
+  readonly onActivateFile: (surface: RightPanelSurface) => void;
+  readonly onCloseFile: (surface: RightPanelSurface) => void;
   readonly availableEditors: ReadonlyArray<EditorId>;
   readonly pendingSurfaceIds: ReadonlySet<string>;
   readonly onOpenFile: (relativePath: string) => void;
@@ -240,7 +246,17 @@ export function RightPanelSurfaceContent(props: {
               }
             />
           ) : null}
+          {attachment ? null : (
+            <OpenFileTabs
+              files={files.openFiles}
+              activeSurfaceId={surface.id}
+              pendingSurfaceIds={files.pendingSurfaceIds}
+              onActivate={files.onActivateFile}
+              onClose={files.onCloseFile}
+            />
+          )}
           <FilePreviewPanel
+            {...(attachment ? {} : { explorerSide: "left" as const })}
             key={`${props.environmentId}:${attachment ? `attachment:${attachment.id}` : cwd}`}
             environmentId={props.environmentId}
             cwd={cwd}

@@ -21,6 +21,7 @@ export function FileExplorerPane({
   defaultWidthFraction,
   minWidth = MIN_WIDTH,
   resizeLabel = "Resize file explorer",
+  side = "right",
 }: {
   resizable: boolean;
   children: ReactNode;
@@ -29,6 +30,8 @@ export function FileExplorerPane({
   defaultWidthFraction?: number;
   minWidth?: number;
   resizeLabel?: string;
+  /** Which side of the row the tree sits on; its resize handle is on the inner edge. */
+  side?: "left" | "right";
 }) {
   const [maxWidth, setMaxWidth] = useState(MAX_WIDTH);
   const [responsiveDefaultWidth, setResponsiveDefaultWidth] = useState(defaultWidth);
@@ -37,7 +40,7 @@ export function FileExplorerPane({
     defaultWidth: responsiveDefaultWidth,
     minWidth,
     maxWidth,
-    edge: "left",
+    edge: side === "left" ? "right" : "left",
   });
 
   return (
@@ -64,7 +67,12 @@ export function FileExplorerPane({
       aria-label="File explorer"
       className={cn(
         "relative flex min-h-0 min-w-0 shrink-0 bg-background",
-        resizable ? "border-l border-border/60" : "flex-1",
+        side === "left" && "order-first",
+        resizable
+          ? side === "left"
+            ? "border-r border-border/60"
+            : "border-l border-border/60"
+          : "flex-1",
       )}
       style={
         resizable
@@ -79,6 +87,7 @@ export function FileExplorerPane({
         <RightPanelResizeHandle
           handlers={handlers}
           label={resizeLabel}
+          {...(side === "left" ? { className: "-right-1 left-auto" } : {})}
           tabIndex={0}
           aria-valuenow={width}
           aria-valuemin={minWidth}
@@ -88,10 +97,10 @@ export function FileExplorerPane({
             let nextWidth: number;
             switch (event.key) {
               case "ArrowLeft":
-                nextWidth = width + 16;
+                nextWidth = side === "left" ? width - 16 : width + 16;
                 break;
               case "ArrowRight":
-                nextWidth = width - 16;
+                nextWidth = side === "left" ? width + 16 : width - 16;
                 break;
               case "Home":
                 nextWidth = minWidth;
