@@ -1,6 +1,8 @@
+import * as Schema from "effect/Schema";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
 
+import { getLocalStorageItem, setLocalStorageItem } from "../../hooks/useLocalStorage";
 import { useProjectGroupUpdate } from "../../hooks/useProjectGroupUpdate";
 import { readLocalApi } from "../../localApi";
 import type { SidebarProjectGroupMember } from "../../sidebarProjectGrouping";
@@ -52,11 +54,35 @@ function WorkspaceFoldersRow(props: {
   );
 }
 
+const LAST_BROWSE_DIRECTORY_KEY = "t3code.workspaceFolderBrowseDirectory";
+
+const parentDirectory = (path: string) => {
+  const trimmed = path.replace(/[\\/]+$/, "");
+  const index = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  return index > 0 ? trimmed.slice(0, index) : null;
+};
+
+function readLastBrowseDirectory(): string | null {
+  try {
+    return getLocalStorageItem(LAST_BROWSE_DIRECTORY_KEY, Schema.String) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastBrowseDirectory(path: string) {
+  try {
+    setLocalStorageItem(LAST_BROWSE_DIRECTORY_KEY, path, Schema.String);
+  } catch {
+    // Browsing still works; it just opens at the default folder next time.
+  }
+}
+
 /** Lists a checkout's extra workspace folders with remove buttons and an add field. */
 export function WorkspaceFoldersEditor(props: {
   project: Pick<
     SidebarProjectGroupMember,
-    "environmentId" | "id" | "environmentLabel" | "additionalDirectories"
+    "environmentId" | "id" | "environmentLabel" | "additionalDirectories" | "workspaceRoot"
   >;
   editable: boolean;
 }) {
@@ -88,8 +114,15 @@ export function WorkspaceFoldersEditor(props: {
     if (await save([...folders, trimmed], "Failed to add workspace folder")) setDraft("");
   };
   const browse = async () => {
-    const picked = await readLocalApi()?.dialogs.pickFolder();
-    if (picked) await add(picked);
+    // Start where the last folder was picked, else beside the project, since sibling repos are typical.
+    const initialPath =
+      readLastBrowseDirectory() ?? parentDirectory(project.workspaceRoot) ?? undefined;
+    const picked = await readLocalApi()?.dialogs.pickFolder(
+      initialPath === undefined ? undefined : { initialPath },
+    );
+    if (!picked) return;
+    writeLastBrowseDirectory(parentDirectory(picked) ?? picked);
+    await add(picked);
   };
 
   return (
