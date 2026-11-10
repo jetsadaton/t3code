@@ -1355,3 +1355,19 @@ export function sortScopedProjectsForSidebar<
       left.id.localeCompare(right.id),
   );
 }
+
+/**
+ * Puts running threads first among the threads the user has not placed by hand. Threads with an
+ * activeOrderKey keep their dragged position, so a thread starting a run never moves them.
+ */
+export function liftWorkingThreads<
+  T extends { readonly activeOrderKey?: string | null | undefined },
+>(threads: ReadonlyArray<T>, isWorking: (thread: T) => boolean): Array<T> {
+  const unplaced = threads.filter((thread) => thread.activeOrderKey == null);
+  const placed = threads.filter((thread) => thread.activeOrderKey != null);
+  return [
+    ...unplaced.filter((thread) => isWorking(thread)),
+    ...unplaced.filter((thread) => !isWorking(thread)),
+    ...placed,
+  ];
+}

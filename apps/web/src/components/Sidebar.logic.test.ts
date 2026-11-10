@@ -6,6 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
 import {
+  liftWorkingThreads,
   shouldCreateNewThreadInCurrentProject,
   deleteSelectedThreadEntries,
   getFallbackThreadIdAfterDelete,
@@ -1648,5 +1649,22 @@ describe("shouldCreateNewThreadInCurrentProject", () => {
     expect(shouldCreateNewThreadInCurrentProject(false, 1, 3)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(false, 0, 0)).toBe(true);
     expect(shouldCreateNewThreadInCurrentProject(true, 2, 2)).toBe(true);
+  });
+});
+
+describe("liftWorkingThreads", () => {
+  it("lifts running threads above idle ones but never moves dragged threads", () => {
+    const threads = [
+      { id: "idle", activeOrderKey: null, working: false },
+      { id: "running", activeOrderKey: null, working: true },
+      { id: "dragged-idle", activeOrderKey: "a0", working: false },
+      { id: "dragged-running", activeOrderKey: "a1", working: true },
+    ];
+    expect(liftWorkingThreads(threads, (thread) => thread.working).map((t) => t.id)).toEqual([
+      "running",
+      "idle",
+      "dragged-idle",
+      "dragged-running",
+    ]);
   });
 });
