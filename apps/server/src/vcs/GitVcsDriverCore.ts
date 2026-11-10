@@ -26,6 +26,7 @@ import {
   type GitCommandFailureReason,
   T3_PROJECT_FILE_NAME,
   type ReviewBranchCommitsInput,
+  type ReviewCommitGraphInput,
   type ReviewDiffFileContentsInput,
   type ReviewDiffPreviewInput,
   type ReviewDiffFileStat,
@@ -33,6 +34,7 @@ import {
   type VcsRef,
 } from "@t3tools/contracts";
 import { dedupeRemoteBranchesWithLocalMatches } from "@t3tools/shared/git";
+import { COMMIT_GRAPH_LOG_FORMAT, parseCommitGraphLog } from "./commitGraphLog.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { compactTraceAttributes } from "@t3tools/shared/observability";
 import { decodeJsonResult } from "@t3tools/shared/schemaJson";
@@ -78,6 +80,9 @@ const REVIEW_METADATA_MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const REVIEW_UNTRACKED_MAX_FILES = 5_000;
 const REVIEW_DIFF_FILE_MAX_OUTPUT_BYTES = 1024 * 1024;
 const REVIEW_BRANCH_COMMIT_LIMIT = 100;
+// ponytail: fixed window, add paging (--skip) when people scroll past it.
+const COMMIT_GRAPH_LIMIT = 500;
+const COMMIT_GRAPH_MAX_OUTPUT_BYTES = 1024 * 1024;
 const REVIEW_BRANCH_SUBJECT_LIMIT = 300;
 const REVIEW_BRANCH_COMMIT_MAX_OUTPUT_BYTES = 128 * 1024;
 // Client patch parsers require a/ and b/ prefixes; override user diff prefix settings.
@@ -3412,6 +3417,56 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     };
   });
 
+  const getCommitGraph = Effect.fn("getCommitGraph")(function* (input: ReviewCommitGraphInput) {
+    const empty = { commits: [], headSha: null, uncommittedCount: 0, truncated: false };
+    const repository = yield* resolveRepositoryPathsUncached(input.cwd);
+    if (!repository?.worktreeRoot) return empty;
+    const cwd = repository.worktreeRoot;
+    const head = yield* executeGit(
+      "GitVcsDriver.getCommitGraph.head",
+      cwd,
+      ["rev-parse", "--verify", "--quiet", "HEAD"],
+      { allowNonZeroExit: true },
+    );
+    const headSha = head.exitCode === 0 ? head.stdout.trim() || null : null;
+    const status = yield* executeGit(
+      "GitVcsDriver.getCommitGraph.status",
+      cwd,
+      ["status", "--porcelain=v1", "--untracked-files=normal"],
+      { allowNonZeroExit: true, maxOutputBytes: COMMIT_GRAPH_MAX_OUTPUT_BYTES },
+    );
+    const uncommittedCount =
+      status.exitCode === 0
+        ? status.stdout.split("\n").filter((line) => line.length > 0).length
+        : 0;
+    if (headSha === null) return { ...empty, uncommittedCount };
+    const result = yield* executeGit(
+      "GitVcsDriver.getCommitGraph",
+      cwd,
+      [
+        "log",
+        "--no-notes",
+        "--no-show-signature",
+        "--date-order",
+        "--decorate=full",
+        "--decorate-refs-exclude=refs/stash",
+        `--format=${COMMIT_GRAPH_LOG_FORMAT}`,
+        `--max-count=${COMMIT_GRAPH_LIMIT + 1}`,
+        ...(input.includeRemotes === false
+          ? ["--branches", "--tags", "HEAD"]
+          : ["--branches", "--tags", "--remotes", "HEAD"]),
+      ],
+      { maxOutputBytes: COMMIT_GRAPH_MAX_OUTPUT_BYTES, appendTruncationMarker: true },
+    );
+    const commits = parseCommitGraphLog(result.stdout, REVIEW_BRANCH_SUBJECT_LIMIT);
+    return {
+      commits: commits.slice(0, COMMIT_GRAPH_LIMIT),
+      headSha,
+      uncommittedCount,
+      truncated: result.stdoutTruncated || commits.length > COMMIT_GRAPH_LIMIT,
+    };
+  });
+
   const getReviewDiffPreview = Effect.fn("getReviewDiffPreview")(function* (
     input: ReviewDiffPreviewInput,
   ) {
@@ -5112,6 +5167,7 @@ export const makeGitVcsDriverCore = Effect.fn("makeGitVcsDriverCore")(function* 
     }),
     readRangeContext,
     getReviewBranchCommits,
+    getCommitGraph,
     getReviewDiffPreview,
     getReviewDiffFileContents,
     readConfigValue,

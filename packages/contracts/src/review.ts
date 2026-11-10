@@ -39,6 +39,31 @@ export const ReviewBranchCommitsResult = Schema.Struct({
 });
 export type ReviewBranchCommitsResult = typeof ReviewBranchCommitsResult.Type;
 
+export const ReviewCommitGraphInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+  includeRemotes: Schema.optionalKey(Schema.Boolean),
+});
+export type ReviewCommitGraphInput = typeof ReviewCommitGraphInput.Type;
+
+export const ReviewCommitGraphCommit = Schema.Struct({
+  sha: Schema.String,
+  parents: Schema.Array(Schema.String),
+  author: Schema.String,
+  committedAt: Schema.String,
+  subject: Schema.String,
+  // Raw `%D` decorations, e.g. ["HEAD -> main", "origin/main", "tag: v1.0"].
+  refs: Schema.Array(Schema.String),
+});
+export type ReviewCommitGraphCommit = typeof ReviewCommitGraphCommit.Type;
+
+export const ReviewCommitGraphResult = Schema.Struct({
+  commits: Schema.Array(ReviewCommitGraphCommit),
+  headSha: Schema.NullOr(Schema.String),
+  uncommittedCount: Schema.Number,
+  truncated: Schema.Boolean,
+});
+export type ReviewCommitGraphResult = typeof ReviewCommitGraphResult.Type;
+
 export const ReviewDiffPreviewSourceKind = Schema.Literals([
   "working-tree",
   "branch-range",

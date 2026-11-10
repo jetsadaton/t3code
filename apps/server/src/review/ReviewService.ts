@@ -10,6 +10,8 @@ import {
   VcsUnsupportedOperationError,
   type ReviewBranchCommitsInput,
   type ReviewBranchCommitsResult,
+  type ReviewCommitGraphInput,
+  type ReviewCommitGraphResult,
   type ReviewDiffFileContentsInput,
   type ReviewDiffFileContentsResult,
   type ReviewDiffPreviewError,
@@ -24,6 +26,7 @@ import * as KnownWorkspaces from "../workspace/KnownWorkspaces.ts";
 
 const WORKSPACE_BOUND_SUBJECTS = {
   "ReviewService.getBranchCommits": "commit list",
+  "ReviewService.getCommitGraph": "commit graph",
   "ReviewService.getDiffPreview": "diff preview",
   "ReviewService.getDiffFileContents": "diff file contents",
 } as const;
@@ -34,6 +37,9 @@ export class ReviewService extends Context.Service<
     readonly getBranchCommits: (
       input: ReviewBranchCommitsInput,
     ) => Effect.Effect<ReviewBranchCommitsResult, ReviewDiffPreviewError>;
+    readonly getCommitGraph: (
+      input: ReviewCommitGraphInput,
+    ) => Effect.Effect<ReviewCommitGraphResult, ReviewDiffPreviewError>;
     readonly getDiffPreview: (
       input: ReviewDiffPreviewInput,
     ) => Effect.Effect<ReviewDiffPreviewResult, ReviewDiffPreviewError>;
@@ -110,6 +116,23 @@ export const make = Effect.gen(function* () {
     return yield* git.getReviewBranchCommits(input);
   });
 
+  const getCommitGraph: ReviewService["Service"]["getCommitGraph"] = Effect.fn(
+    "ReviewService.getCommitGraph",
+  )(function* (input) {
+    yield* assertWorkspaceBoundCwd("ReviewService.getCommitGraph", input.cwd);
+
+    const handle = yield* vcsRegistry.detect({ cwd: input.cwd, requestedKind: "auto" });
+    if (!handle) return { commits: [], headSha: null, uncommittedCount: 0, truncated: false };
+    if (handle.kind !== "git") {
+      return yield* new VcsUnsupportedOperationError({
+        operation: "ReviewService.getCommitGraph",
+        kind: handle.kind,
+        detail: "Commit graphs require a Git repository.",
+      });
+    }
+    return yield* git.getCommitGraph(input);
+  });
+
   const getDiffPreview: ReviewService["Service"]["getDiffPreview"] = Effect.fn(
     "ReviewService.getDiffPreview",
   )(function* (input) {
@@ -146,6 +169,7 @@ export const make = Effect.gen(function* () {
 
   return ReviewService.of({
     getBranchCommits,
+    getCommitGraph,
     getDiffPreview,
     getDiffFileContents,
   });

@@ -22,6 +22,8 @@ import {
   type VcsCreateWorktreeResult,
   type ReviewBranchCommitsInput,
   type ReviewBranchCommitsResult,
+  type ReviewCommitGraphInput,
+  type ReviewCommitGraphResult,
   type ReviewDiffPreviewInput,
   type ReviewDiffPreviewResult,
   type ReviewDiffFileContentsInput,
@@ -346,6 +348,9 @@ export class GitVcsDriver extends Context.Service<
     readonly getReviewBranchCommits: (
       input: ReviewBranchCommitsInput,
     ) => Effect.Effect<ReviewBranchCommitsResult, GitCommandError>;
+    readonly getCommitGraph: (
+      input: ReviewCommitGraphInput,
+    ) => Effect.Effect<ReviewCommitGraphResult, GitCommandError>;
     readonly getReviewDiffPreview: (
       input: ReviewDiffPreviewInput,
     ) => Effect.Effect<ReviewDiffPreviewResult, GitCommandError>;
