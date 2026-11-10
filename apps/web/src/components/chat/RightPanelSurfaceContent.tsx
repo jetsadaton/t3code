@@ -137,6 +137,7 @@ export function RightPanelSurfaceContent(props: {
             environmentId={props.environmentId}
             roots={[props.files.workspaceRoot, ...props.files.additionalDirectories]}
             workspaceMutationId={props.workspaceMutationId}
+            threadRef={threadRef}
           />
         </Suspense>
       );
